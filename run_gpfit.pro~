@@ -1,3 +1,0 @@
-PRO run_gpfit,shot,t1,t2,etemp=etemp,edens=edens
-
-END
