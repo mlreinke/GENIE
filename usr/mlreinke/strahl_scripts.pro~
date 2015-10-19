@@ -1,0 +1,55 @@
+PRO run_gridding_scan
+	k=[0.5,1.0,1.5,2.0,2.5,3.0]
+	nrho=[50,100,200,400]
+	shot=1101209004
+	z=18
+	t1=1.0
+	t2=1.2
+	nk=n(k)+1
+	nnrho=n(nrho)+1
+	FOR i=0,nk-1 DO BEGIN
+		FOR j=0,nnrho-1 DO BEGIN
+			path=0
+			print, k[i],nrho[j]
+			RUN_CMOD_STRAHL,shot,z,t1,t2,path=path,k=k[i],nrho=nrho[j]
+			savepath='/home/mlreinke/idl/impurities/strahl/gridding_scan_'+num2str(shot,1)+'_k'+num2str(i,1)+'_nrho'+num2str(j,1)+'.dat'
+			spawn,'cp '+path+' '+savepath			
+			print, savepath
+                ENDFOR
+	ENDFOR
+END
+
+PRO plot_gridding_scan,load=load
+	nk=2
+	nnrho=4
+	nmax=400
+	shot=1101209004
+	z=18
+	t1=1.0
+	t2=1.2
+	savepath='/home/mlreinke/idl/impurities/strahl/gridding_scan_'+num2str(shot,1)+'.dat'
+	IF NOT keyword_set(load) THEN BEGIN
+		FOR i=0,nk-1 DO BEGIN
+			FOR j=0,nnrho-1 DO BEGIN
+				path='/home/mlreinke/idl/impurities/strahl/gridding_scan_'+num2str(shot,1)+'_k'+num2str(i,1)+'_nrho'+num2str(j,1)+'.dat'
+				RUN_CMOD_STRAHL,shot,z,t1,t2,path=path,/nostrahl,data=idata
+				IF i EQ 0 AND j EQ 0 THEN BEGIN
+					psin=fltarr(nmax,nk,nnrho)
+					ntime=n(idata.time)
+					nz=fltarr(nmax,ntime,nk,nnrho)
+					etemp=fltarr(nmax,nk,nnrho)
+					edens=fltarr(nmax,nk,nnrho)
+                                ENDIF
+				irho=n(idata.rho)+1.0
+				psin[0:irho-1,i,j]=idata.psin
+				etemp[0:irho-1,i,j]=idata.temp[*,0]
+				edens[0:irho-1,i,j]=idata.temp[*,0]
+				FOR q=0,z DO nz[0:irho-1,*,i,j]+=idata.csden[*,q,*]
+			ENDFOR
+		ENDFOR			
+		save,psin,nz,etemp,edens,filename=savepath
+        ENDIF ELSE restore, savepath
+	
+	stop
+	
+END

@@ -1,0 +1,11 @@
+FUNCTION read_dielsattauto_data,save=save,load=data,path=path
+
+	IF NOT keyword_set(path) THEN path='/usr/local/cmod/idl/atomic_physics/'
+	save_path=path+'DielSattAuto.sav'
+	
+	IF keyword_set(load) THEN BEGIN
+		restore, save_path
+		RETURN,data
+	ENDIF
+
+END

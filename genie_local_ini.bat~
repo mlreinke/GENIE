@@ -1,0 +1,63 @@
+;check that output paths are created and create if necessary
+basepath = '/home/'+logname()+'/idl/'
+spawn, 'cd '+basepath, output,error
+IF (strmatch(error, '*No such file or directory*') EQ 1) THEN $
+	spawn, 'mkdir '+basepath, output,error
+path='/home/'+logname()+'/idl/genie/'
+spawn, 'cd '+path, output,error
+IF (strmatch(error, '*No such file or directory*') EQ 1) THEN $
+	spawn, 'mkdir '+path, output,error
+path='/home/'+logname()+'/idl/genie/data/'
+spawn, 'cd '+path, output,error
+IF (strmatch(error, '*No such file or directory*') EQ 1) THEN $
+	spawn, 'mkdir '+path, output,error
+path='/home/'+logname()+'/idl/genie/data/gpv/'
+spawn, 'cd '+path, output,error
+IF (strmatch(error, '*No such file or directory*') EQ 1) THEN $
+	spawn, 'mkdir '+path, output,error
+path='/home/'+logname()+'/idl/genie/data/info/'
+spawn, 'cd '+path, output,error
+IF (strmatch(error, '*No such file or directory*') EQ 1) THEN $
+	spawn, 'mkdir '+path, output,error
+
+gpath='/home/mlreinke/GENIE'
+!path='/usr/local/cmod/codes/efit/idl/:'+!path
+!path='/home/mlreinke/GENIE/usr/mlreinke/:'+!path
+.compile /usr/local/cmod/codes/efit/idl/efit_rz2rmid.pro
+.compile /home/mlreinke/GENIE/mlr_functions.pro
+.compile /home/mlreinke/GENIE/ssvdc.pro
+.compile /home/mlreinke/GENIE/genie_help.pro
+.compile /home/mlreinke/GENIE/general_plot.pro
+.compile /home/mlreinke/GENIE/read_atomicmass_tables.pro
+.compile /home/mlreinke/GENIE/shellinvert.pro
+.compile /home/mlreinke/GENIE/zeff_neo.pro
+.compile /home/mlreinke/GENIE/neutron_rate.pro
+.compile /home/mlreinke/GENIE/qfit.pro
+.compile /home/mlreinke/GENIE/GENRAD/cooling_curves.pro
+.compile /home/mlreinke/HIREXSR/read_ark_table
+.compile /home/mlreinke/HIREXSR/hirexsr_load_data
+.compile /home/mlreinke/GENIE/GENRAD/johnson_hinnov_emissivity.pro
+.compile /home/mlreinke/GENIE/GENRAD/sxr_vuv_molybdenum.pro
+.compile /home/mlreinke/GENIE/GENRAD/read_hullac_data.pro
+.compile /home/mlreinke/GENIE/GENTRAN/read_fracabund_tables.pro
+.compile /home/mlreinke/GENIE/GENTRAN/ave_ionization.pro
+.compile /home/mlreinke/GENIE/GENTRAN/read_adas_files.pro
+.compile /home/mlreinke/GENIE/GENTRAN/read_loch_data.pro
+.compile /home/mlreinke/GENIE/GENTRAN/read_mattioli_data.pro
+.compile /home/mlreinke/GENIE/GENTRAN/read_putterich_data.pro
+.compile /home/mlreinke/GENIE/GENTRAN/ionrec.pro
+.compile /home/mlreinke/GENIE/GENTRAN/gentran.pro
+.compile /home/mlreinke/GENIE/genie_line.pro
+.compile /home/mlreinke/GENIE/genie_spec.pro
+.compile /home/mlreinke/GENIE/GENPOS/genpos.pro
+.compile /home/mlreinke/GENIE/GENSPEC/genspec.pro
+.compile /home/mlreinke/GENIE/GENPOS/genpos_utility.pro
+.compile /home/mlreinke/GENIE/GENPOS/genpos_xraytomo.pro
+.compile /home/mlreinke/GENIE/GENSPEC/genspec_utility.pro
+.compile /home/mlreinke/GENIE/GENRAD/genrad_argon.pro
+.compile /home/mlreinke/GENIE/GENRAD/genrad_xraytomo.pro
+.compile /home/mlreinke/GENIE/GENRAD/genrad_hirexsr_thaco.pro
+
+print, 'GENIE loaded from: '+gpath
+print, 'use helpme to view HTML-based documentation'
+
