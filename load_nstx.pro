@@ -5,7 +5,7 @@
 ; hard-coded into w_spec and impspec, so that the codes are more easily 
 ; portable to other experiments.
 
-PRO load_nstx,machine
+PRO load_nstx,machine 
 line_std={nam:['Mo XXXII','Ar XV','Ca XVII','Fe XXIII'], $ ; default lines to track
 	 lam0:[126.1,     220.4,  192.3,    132.4     ], $
 	 lam1:[129.2,     222.7,  193.6,    133.5     ], $
