@@ -186,8 +186,14 @@ PRO w_impspec_plotspec,u
 		oplot,xplot,gaussian_fits(xplot,coefs),color=col[2]
 		ilines=(n(coefs)-1)/3
 		FOR i=0,ilines-1 DO BEGIN
-			IF i EQ u.stat.jindex THEN color=col[3] ELSE color=col[1]
-			oplot,xplot,gaussian_fits(xplot,coefs[3*i:3*(i+1)-1]),color=color,linestyle=2.0
+			IF i EQ u.stat.jindex THEN BEGIN
+				color=col[3] 
+				thick=2.0
+                        ENDIF ELSE BEGIN
+				color=col[1]
+				thick=1.0
+			ENDELSE
+			oplot,xplot,gaussian_fits(xplot,coefs[3*i:3*(i+1)-1]),color=color,linestyle=2.0,thick=thick
 		ENDFOR
 		oplot,xplot,coefs[3*ilines]*(xplot-xplot[0])+last(coefs),color=col[1],linestyle=3.0
 	
@@ -261,7 +267,7 @@ PRO w_impspec_load,u
 	instr=''	;create list spectrometers for all lines
 	FOR i=0,n(ispec) DO BEGIN
 		xspec=*ispec[i]
-		FOR j=0,xspec.nlines-1 DO instr=[instr,xspec.(j).spec]
+		IF size(xspec,/type) EQ 8 THEN FOR j=0,xspec.nlines-1 DO instr=[instr,xspec.(j).spec]
 	ENDFOR
 	instr=instr[1:*]
 	spec=instr[0]	;create list of unique spectrometers
@@ -289,6 +295,12 @@ PRO w_impspec_load,u
 	endif
 END
 
+PRO w_impspec_write_ztable,u
+	widget_control,u.id.z_table,set_value=transpose(u.z)
+	widget_control,u.id.z_table,background_color=[255,255,255]
+	widget_control,u.id.z_table,background_color=[0,200,200],use_table_select=[0,u.stat.zindex,0,u.stat.zindex]
+END
+
 PRO w_impspec_write_ltable,u
 	widget_control,u.id.l_table,get_value=table
 	ispec=*u.dat.ispec[u.stat.zindex]
@@ -301,6 +313,8 @@ PRO w_impspec_write_ltable,u
          ENDFOR
 	 FOR i=ispec.nlines,n(table[0,*]) DO table[*,i]=['','','','']
 	 widget_control,u.id.l_table,set_value=table
+	widget_control,u.id.l_table,background_color=[255,255,255]
+	widget_control,u.id.l_table,background_color=[0,200,200],use_table_select=[0,u.stat.lindex,3,u.stat.lindex]
 	 u.stat.nl=ispec.nlines
 	;endif
 END
@@ -319,6 +333,8 @@ PRO w_impspec_write_itable,u
          ENDFOR
 	 FOR i=iline.ilines,n(table[0,*]) DO table[*,i]=['','','','','']
 	 widget_control,u.id.i_table,set_value=table
+	widget_control,u.id.i_table,background_color=[255,255,255]
+	widget_control,u.id.i_table,background_color=[0,200,200],use_table_select=[0,u.stat.jindex,4,u.stat.jindex]
 	 u.stat.ni=iline.ilines
 	;endif
 END
@@ -383,7 +399,8 @@ PRO w_impspec_event,event
 					IF u.stat.lindex NE 0 THEN u.stat.lindex-=1
 					widget_control,u.id.litext,set_value=num2str(u.stat.lindex,1)
 					IF u.stat.dat THEN BEGIN
-						w_impspec_write_itable,u	
+						w_impspec_write_itable,u
+						w_impspec_write_ltable,u
 						w_impspec_plot,u
 					ENDIF
                                 END
@@ -392,21 +409,24 @@ PRO w_impspec_event,event
 					widget_control,u.id.litext,set_value=num2str(u.stat.lindex,1)
 					IF u.stat.dat THEN BEGIN
 						w_impspec_write_itable,u
+						w_impspec_write_ltable,u
 						w_impspec_plot,u
 					ENDIF
                                 END
 				"IM" : BEGIN
-					IF u.stat.jindex NE 0 THEN u.stat.jindex-=1
-					widget_control,u.id.itext,set_value=num2str(u.stat.jindex,1)
 					IF u.stat.dat AND NOT u.plot.br THEN BEGIN	
+						IF u.stat.jindex NE 0 THEN u.stat.jindex-=1
 						w_impspec_plot,u
+						w_impspec_write_itable,u
+						widget_control,u.id.itext,set_value=num2str(u.stat.jindex,1)
 					ENDIF
                                 END
 				"IP" : BEGIN
-					IF u.stat.jindex NE u.stat.ni-1 THEN u.stat.jindex+=1
-					widget_control,u.id.itext,set_value=num2str(u.stat.jindex,1)
 					IF u.stat.dat AND NOT u.plot.br THEN BEGIN	
+						IF u.stat.jindex NE u.stat.ni-1 THEN u.stat.jindex+=1
 						w_impspec_plot,u
+						w_impspec_write_itable,u
+						widget_control,u.id.itext,set_value=num2str(u.stat.jindex,1)
 					ENDIF
                                 END
 				"ZM" : BEGIN
@@ -415,6 +435,7 @@ PRO w_impspec_event,event
 					IF u.stat.dat THEN BEGIN
 						w_impspec_write_ltable,u
 						w_impspec_write_itable,u
+						w_impspec_write_ztable,u
 						w_impspec_plot,u
 					ENDIF
                                 END
@@ -424,6 +445,7 @@ PRO w_impspec_event,event
 					IF u.stat.dat THEN BEGIN
 						w_impspec_write_ltable,u
 						w_impspec_write_itable,u
+						w_impspec_write_ztable,u
 						w_impspec_plot,u
 					ENDIF
                                 END
@@ -483,7 +505,52 @@ PRO w_impspec_event,event
 				ELSE:
 			ENDCASE
 		END
-   		"WIDGET_TEXT_CH": BEGIN
+		'WIDGET_DRAW' : BEGIN ;process a button event in the draw window
+		 	CASE event.id OF
+		  	u.id.draw2 : BEGIN ; in time pane
+		   		IF (event.press NE 0) OR (event.release NE 0) THEN BEGIN ; ie not a motion event
+	       	   			IF event.press EQ 1 THEN BEGIN ; LMB click,click - zoom time L,R
+		    				click_loc = convert_coord(event.x, event.y, /device, /to_data)
+						IF u.plot.zoom[0] EQ 0 THEN BEGIN
+						 	u.plot.zoom[0]=1
+							u.plot.bxr[0]=click_loc[0]
+							widget_control, u.id.bx0,set_value=num2str(u.plot.bxr[0],dp=3)
+                                                ENDIF ELSE BEGIN
+							u.plot.zoom[0]=0
+						 	IF click_loc[0] LT u.plot.bxr[0] THEN BEGIN
+								u.plot.bxr[1]=u.plot.x0[0]
+							  	u.plot.bxr[0]=click_loc[0]
+							  	widget_control, u.id.bx0,set_value=num2str(u.plot.bxr[0],dp=3)
+                                               	 	ENDIF ELSE  u.plot.bxr[1]=click_loc[0]
+							widget_control, u.id.bx1,set_value=num2str(u.plot.bxr[1],dp=3)
+						 	w_impspec_plotb,u
+						ENDELSE	
+		    			ENDIF
+		    			if event.press eq 2 then begin ; MMB click - set spectrum time
+		    				click_loc = convert_coord(event.x, event.y, /device, /to_data)
+						u.stat.time=click_loc[0]
+						widget_control, u.id.t_slider,set_value=u.stat.time*1000
+						widget_control, u.id.t_text,set_value=num2str(u.stat.time,dp=3)
+						w_impspec_plotb,u
+		    			ENDIF
+		    			if event.press eq 4 then begin ; RMB click - zoom out (ie zoom 0,2)
+		    				 u.plot.zoom[0]=0
+						 u.plot.bxr[0]=0.0
+						 u.plot.bxr[1]=u.stat.tmax
+						 widget_control, u.id.bx0,set_value=num2str(u.plot.bxr[0],dp=3)
+						 widget_control, u.id.bx1,set_value=num2str(u.plot.bxr[1],dp=3)
+						 w_impspec_plotb,u
+		    			endif
+		   		endif else begin ; pointer motion in pane
+	  				ptr_loc = convert_coord(event.x, event.y, /device, /to_data)
+					widget_control, u.id.tim_ind,set_value='t='+num2str(ptr_loc[0],dp=3)
+		  		endelse
+                        END
+			ELSE :
+		 	ENDCASE
+		END
+   	  
+ 		"WIDGET_TEXT_CH": BEGIN
 			widget_control,event.id,get_value=data
 			CASE event.id OF
 				u.id.shotid : BEGIN
@@ -540,6 +607,7 @@ PRO w_impspec_event,event
 					IF u.stat.dat THEN BEGIN
 						ispec=*u.dat.ispec[u.stat.zindex]
 						if size(ispec,/type) eq 8 then begin
+						 w_impspec_write_ztable,u
 						 w_impspec_write_ltable,u
 						 w_impspec_write_itable,u
 						 w_impspec_plot,u
@@ -552,12 +620,25 @@ PRO w_impspec_event,event
 					IF u.stat.dat THEN BEGIN
 						ispec=*u.dat.ispec[u.stat.zindex]
 						if size(ispec,/type) eq 8 then begin
+						 w_impspec_write_ltable,u
 						 w_impspec_write_itable,u
 						 w_impspec_plot,u
 						endif
 						widget_control,u.id.litext,set_value=num2str(u.stat.lindex,1)
 					ENDIF
-				END
+                                     END
+				"I_TABLE" : BEGIN
+					IF event.sel_top NE -1 THEN u.stat.jindex=event.sel_top
+					IF u.stat.dat THEN BEGIN
+						ispec=*u.dat.ispec[u.stat.zindex]
+						if size(ispec,/type) eq 8 then begin
+						 w_impspec_write_itable,u
+						 w_impspec_plot,u
+						endif
+						widget_control,u.id.itext,set_value=num2str(u.stat.jindex,1)
+					ENDIF
+                                     END
+
 				ELSE : 
                         ENDCASE
 
@@ -604,11 +685,13 @@ PRO w_impspec,shot=shot,time=time,zlist=zlist
 			IF NOT keyword_set(shot) THEN shot=1120210003
 			IF NOT keyword_set(time) THEN time=1.0
 			IF NOT keyword_set(zlist) THEN zlist=[5,7,8,9,10,18,42,74]
+			machtr=[0.01,1.65]
 		END
 		'nstxu' : BEGIN
 			IF NOT keyword_set(shot) THEN shot=141229
 			IF NOT keyword_set(time) THEN time=0.3
 			IF NOT keyword_set(zlist) THEN zlist=[7,8]
+			machtr=[0.01,1.0]
 		END
 	ENDCASE
 
@@ -620,16 +703,18 @@ PRO w_impspec,shot=shot,time=time,zlist=zlist
 	A=widget_base(base,/column)
 
 	ysz=900
-	xsz=500
-	A1=widget_base(A,/column,xsize=xsz,ysize=ysz*0.4,/frame)
-	A2=widget_base(A,/column,xsize=xsz,ysize=ysz*0.4,/frame)
-	A3=widget_base(A,/column,xsize=xsz,ysize=ysz*0.15,/frame)
+	axsz=500
+	A1=widget_base(A,/column,xsize=axsz,ysize=ysz*0.4,/frame)
+	A2=widget_base(A,/column,xsize=axsz,ysize=ysz*0.55,/frame)
 
-	xsz=750
-	draw1=widget_draw(B,xsize=xsz,ysize=0.65*ysz,/frame)
+	bxsz=750
+	draw1=widget_draw(B,xsize=bxsz,ysize=0.65*ysz,/frame)
 	B1=widget_base(B,/row)
-	draw2=widget_draw(B1,xsize=xsz*0.725,ysize=0.3*ysz,/frame)
-	B2=widget_base(B1,/column,xsize=xsz*0.25,ysize=0.295*ysz,/frame)
+	B1p1=widget_base(B1,/row)
+	i_table=widget_table(B1p1,xsize=5,ysize=15,column_lab=['#','Z','LAM','LABEL','ISO-E'],value=strarr(5,15),/no_row_headers,y_scroll_size=10,$
+		column_width=[35,35,75,150,60],/all_events,alignment=1)
+
+	B2=widget_base(B1,/column,xsize=bxsz*0.25,ysize=0.295*ysz,/frame)
 	B2a=widget_base(B2,/row)
 	bplot=widget_button(B2,value='BRIGHT')
 	B2b=widget_base(B2,/row)
@@ -667,7 +752,7 @@ PRO w_impspec,shot=shot,time=time,zlist=zlist
 
 	B3=widget_base(B,/row)
 	t_text=widget_text(B3,xsize=8,ysize=1,/edit)
-	t_slider=widget_slider(B3,xsize=xsz-120,min=0,max=2000,value=time*1.0e3,/drag,/suppress)
+	t_slider=widget_slider(B3,xsize=bxsz-120,min=0,max=2000,value=time*1.0e3,/drag,/suppress)
 
 
 	A1p1=widget_base(A1,/row)
@@ -707,10 +792,7 @@ PRO w_impspec,shot=shot,time=time,zlist=zlist
 	litext = widget_text(A1p4,xsize=3,ysize=1,/edit)
 	lp=widget_button(A1p4,value=' > ')
 
-
-	A3p1=widget_base(A3,/row)
-	i_table=widget_table(A3p1,xsize=5,ysize=15,column_lab=['#','Z','LAM','LABEL','ISO-E'],value=strarr(5,15),/no_row_headers,y_scroll_size=4,$
-		column_width=[35,35,75,150,60],/all_events,alignment=1)
+	draw2=widget_draw(A2,xsize=axsz,ysize=0.55*ysz,/frame,/button_events)
 
 	id={base:base,draw1:draw1,draw2:draw2,t_slider:t_slider,t_text:t_text,$
 		bplot:bplot,im:im,itext:itext,ip:ip,a0plot:a0plot,a1plot:a1plot,a2plot:a2plot,a3plot:a3plot,a4plot:a4plot,$
@@ -719,13 +801,15 @@ PRO w_impspec,shot=shot,time=time,zlist=zlist
 		z_table:z_table,l_table:l_table,zm:zm,zitext:zitext,zp:zp,lm:lm,litext:litext,lp:lp,$
 		i_table:i_table}
 
-	stat={time:time,dat:0,ps:0,lindex:0,zindex:0,jindex:0,ni:0,nl:0,nz:n(zlist)+1}
-	plot={asize:[xsz,0.65*ysz],bsize:[0.725*xsz,0.3*ysz],col:[255,50,180,90,150],pscol:[0,30,200,100,150],$
-		nx:100,br:1,bxr:[0.01,1.65],byr:[0.0,0.0],bya:1,bxa:0,aplot:0}
+	stat={time:time,dat:0,ps:0,lindex:0,zindex:0,jindex:0,ni:0,nl:0,nz:n(zlist)+1,tmax:machtr[1]}
+	plot={asize:[bxsz,0.65*ysz],bsize:[axsz,0.55*ysz],col:[255,50,180,90,150],pscol:[0,30,200,100,150],$
+		nx:100,br:1,bxr:machtr,byr:[0.0,0.0],bya:1,bxa:0,aplot:0,zoom:0}
 	u={id:id,shot:shot,stat:stat,plot:plot,z:zlist}
 	widget_control,base,set_uvalue=u
 	widget_control,u.id.shotid,set_value=num2str(u.shot,1)
 	widget_control,u.id.z_table,set_value=transpose(u.z)
+	widget_control,u.id.z_table,background_color=[255,255,255]
+	widget_control,u.id.z_table,background_color=[0,200,200],use_table_select=[0,u.stat.zindex,0,u.stat.zindex]
 	widget_control,u.id.zitext,set_value=num2str(u.z[u.stat.zindex],1)
 	widget_control,u.id.litext,set_value=num2str(u.stat.lindex,1)
 	widget_control,u.id.itext,set_value=num2str(u.stat.jindex,1)
