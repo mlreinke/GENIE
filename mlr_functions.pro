@@ -2596,9 +2596,7 @@ PRO greeklabels, str,ps=ps
 	plot,[0],[0],title=title,chars=1.5
 END
 
-
 	
-
 ;HOW TO CONCATENATE IN ONE LINE
 ;a=intarr(4,4)+1
 ;b=intarr(4)

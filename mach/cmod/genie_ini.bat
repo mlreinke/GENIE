@@ -5,7 +5,7 @@ MACHINE=getenv('MACHINE')
 GENIE_PATH=getenv('GENIE_PATH') & if GENIE_PATH eq '' then begin & GENIE_PATH='/home/mlreinke/GENIE/' & setenv,'GENIE_PATH='+GENIE_PATH & endif
 
 ;!path='/usr/local/cmod/codes/efit/idl/:'+!path
-;!path=expand_path('+'+GENIE_PATH)+':'+!path
+!path=expand_path('+'+GENIE_PATH)+':'+!path
 
 ;!path='/usr/local/cmod/idl/GENIE/usr/mlreinke/:'+!path
 !path=expand_path('+'+GENIE_PATH+'usr/'+LOGNAME)+':'+!path
