@@ -1,7 +1,11 @@
-FUNCTION read_atomic_name,z, debug=debug, verb=verb
+;10/15/20 - updated to use the environmental variable
+;
 
+FUNCTION read_atomic_name,z, debug=debug, verb=verb
+	path=getenv('ATOMIC_PHYSICS_PATH')
 	;filename='/home/mlreinke/idl/impurities/data/atomic_mass'
-	filename='/usr/local/cmod/idl/atomic_physics/atomic_mass'
+	;filename='/usr/local/cmod/idl/atomic_physics/atomic_mass'
+	filename=path+'atomic_mass'
 	openr,lun,filename,/get_lun
 	ident_str='*Atomic Number*'
 
@@ -33,6 +37,7 @@ FUNCTION read_atomic_name,z, debug=debug, verb=verb
 END
 
 FUNCTION read_atomic_mass,elem_str,full=full,debug=debug, verb=verb,z=z
+	path=getenv('ATOMIC_PHYSICS_PATH')
 	x=size(elem_str,/type)
 	input=elem_str
 	IF x EQ 2 OR x EQ 4 OR x EQ 5 THEN elem_str=read_atomic_name(elem_str)
@@ -40,7 +45,8 @@ FUNCTION read_atomic_mass,elem_str,full=full,debug=debug, verb=verb,z=z
 ;	IF keyword_set(z) THEN elem_str=read_atomic_name(elem_str)
 	
 	;filename='/home/mlreinke/idl/impurities/data/atomic_mass'
-	filename='/usr/local/cmod/idl/atomic_physics/atomic_mass'
+	;filename='/usr/local/cmod/idl/atomic_physics/atomic_mass'
+	filename=path+'atomic_mass'
 	openr,lun,filename,/get_lun
 	ident_str='*Atomic Symbol*'
 	data_str='*= '+elem_str
@@ -87,9 +93,11 @@ FUNCTION read_atomic_mass,elem_str,full=full,debug=debug, verb=verb,z=z
 END
 
 FUNCTION read_atomic_charge,elem_str, debug=debug, verb=verb
+	path=getenv('ATOMIC_PHYSICS_PATH')
 
 	;filename='/home/mlreinke/idl/impurities/data/atomic_mass'
-	filename='/usr/local/cmod/idl/atomic_physics/atomic_mass'
+	;filename='/usr/local/cmod/idl/atomic_physics/atomic_mass'
+	filename=path+'atomic_mass'
 	openr,lun,filename,/get_lun
 	ident_str='*Atomic Number*'
 	data_str='*= '+elem_str
