@@ -68,7 +68,7 @@ END
 ;	result	STRUC	"ISPEC" file formatted for use in other IMPSPEC codse
 ;		*.LINE#		STRUC	information describing how to fit LINE number "#"
 ;			*.DLAM		FLTARR	[lam0,lam1] to truncate wavelength range
-;			*.SPEC		STRING	spectrometer identifier ('xeus','loweus','chromex')
+;			*.SPEC		STRING	spectrometer identifier (i.e. 'xeus','loweus',etc)
 ;			*.INST		FLOAT	maximum line width for (< 0 specifies a lorentzian, > 0 gaussian)
 ;			*.ILINES	INT	number of spectral lines in the group (index=0 is line of interest)
 ;			*.LAM		FLTARR	[ilines] center wavelengths
@@ -338,7 +338,7 @@ PRO add_impspec,shot,z=z,force=force,rm=rm
 	tree=getenv('IMPSPEC_MDS_TREE')
 	node=getenv('IMPSPEC_MDS_PATH')
 	mdsopen,tree,shot
-	dummy=mdsvalue(node+'.C:ISPEC',/quiet,status=status)
+	dummy=mdsvalue(node+'.N:ISPEC',/quiet,status=status)
 	mdsclose,tree,shot
 	IF status AND keyword_set(rm) THEN BEGIN						;removes the IMPSPEC directory
 		mdstcl, "set verify"
@@ -861,17 +861,15 @@ END
 ;	VUV_LOAD_SPEC
 ;
 ;PURPOSE:
-;	This procedure loads the XEUS and LoWEUS data from the tree
+;	This procedure loads the VUV spectrometer data from the tree
 ;	for a given shot
 ;
 ;CALLING SEQUENCE:
-;	VUV_LOAD_SPEC,shot,specbr,lam,time (/xeus or /loweus required)
+;	VUV_LOAD_SPEC,shot,spec,specbr,lam,time
 ;
 ;INPUTS:
 ;	shot	LONG 	shot number
-;
-;KEYWORD PARAMETERS:
-;	/xeus or /loweus required to specifiy which dataset to load
+;	spec	STRING	identifier of the spectrometer to be loaded
 ;
 ;OUTPUTS:
 ;	specbr	FLTARR	[nlam,ntime] of the spectral brightnes [ph/s/m^2/Ang] 
@@ -883,18 +881,44 @@ END
 ;
 ;MODIFICATION HISTORY:
 ;	Written by:	M.L. Reinke (taken from VUV_TREE_ANALYSIS.PRO)
+;	M.L. Reinke	10/20/15 - made to look for machine specific loading routines
 ;
 ;-
 
-PRO vuv_load_spec,shot,specbr,lam,time,xeus=xeus,loweus=loweus,sigbr=sigbr
-	IF keyword_set(xeus) THEN path='\SPECTROSCOPY::TOP.XEUS'
-	IF keyword_set(loweus) THEN path='\SPECTROSCOPY::TOP.LOWEUS'	
-	mdsopen,'spectroscopy',shot
-	specbr=mdsvalue('_sig='+path+':SPEC')
-	lam=mdsvalue('dim_of(_sig,0)')
-	time=mdsvalue('dim_of(_sig,1)')
-	sigbr=mdsvalue('dim_of(_sig,2)')
-	mdsclose,'spectroscopy',shot
+PRO vuv_load_spec,shot,spec,specbr,lam,time,sigbr=sigbr
+	mach=getenv('MACHINE')
+	CASE mach OF
+		'cmod' : BEGIN
+			CASE spec OF 
+				'xeus' : path='\SPECTROSCOPY::TOP.XEUS:SPEC'
+				'loweus' : path='\SPECTROSCOPY::TOP.LOWEUS:SPEC'
+			ENDCASE
+			mdsopen,'spectroscopy',shot
+			specbr=mdsvalue('_sig='+path)
+			lam=mdsvalue('dim_of(_sig,0)')
+			time=mdsvalue('dim_of(_sig,1)')
+			sigbr=mdsvalue('dim_of(_sig,2)')
+			mdsclose,'spectroscopy',shot
+                END
+
+		'nstxu' : BEGIN
+			CASE spec OF 
+				'xeus' : path='\PSPEC_PC::TOP.XEUS:IMAGE'
+				'loweus' : path='\PSPEC_PC::TOP.LOWEUS:IMAGE'
+			ENDCASE
+			mdsopen,'pspec_pc',shot
+			ispecbr=float(mdsvalue('_sig='+path+':IMAGE',/quiet,status=status))
+			lam=mdsvalue('dim_of(_sig,0)',/quiet)
+			time=float(mdsvalue('dim_of(_sig,2)',/quiet))/1.0e3
+			mdsclose,'pspec_pc',shot
+			x=size(ispecbr)
+			specbr=fltarr(x[1],x[3])
+			FOR i=0,x[1]-1 DO FOR j=0,x[3]-1 DO specbr[i,j]=median(ispecbr[i,*,j])
+			sigbr=specbr*0.0	;hardcode for now
+                END
+
+	ENDCASE
+
 END
 
 ;+
@@ -1038,18 +1062,18 @@ END
 ;		*.NLINES	INT	number of lines specified in the file
 ;
 ;OPTIONAL OUTPUTS:
-;	xeus	STRUC	containing the xeus data, used for repeated calls
-;	loweus	STRUC	containing the loweus data, used for repeated calls
+;	data	STRUC of the data and spectrometer labels for use w/ repeated calls if necessary
 ;	
 ;PROCEDURE:
 ;	
 ;
 ;MODIFICATION HISTORY:
 ;	Written by:	M.L. Reinke - 3/12
-;
+;	10/20/15	M.L. Reinke - modified to use a non-hardcoded named spectrometer data loading system
+;                                    
 ;-
 
-PRO impspec,shot,ispec,br,coefs,xeus=xeus,loweus=loweus,plot=plot,debug=debug,kline=kline,fitz=fitz,verb=verb
+PRO impspec,shot,ispec,br,coefs,data=data,plot=plot,debug=debug,kline=kline,fitz=fitz,verb=verb
 	
 	nlines=ispec.nlines
 	instr=strarr(nlines)
@@ -1057,18 +1081,25 @@ PRO impspec,shot,ispec,br,coefs,xeus=xeus,loweus=loweus,plot=plot,debug=debug,kl
 		j=nlines-1-i
 		instr[i]=ispec.(j).spec
 	ENDFOR
-	IF total(where(instr EQ 'xeus')) NE -1 THEN need_xeus=1 ELSE need_xeus=0
-	IF total(where(instr EQ 'loweus')) NE -1 THEN need_loweus=1 ELSE need_loweus=0
+	
+	;load data for 0th line
+	IF NOT keyword_set(data) THEN BEGIN
+		vuv_load_spec,shot,instr[0],specbr,lam,time,sigbr=sigbr
+		idat={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
+		spec=instr[0]
+		data=create_struct('d0',idat)
+		FOR i=0,nlines-1 DO BEGIN
+			tmp=where(spec EQ instr[i])
+			IF tmp[0] EQ -1 THEN BEGIN
+				vuv_load_spec,shot,instr[i],specbr,lam,time,sigbr=sigbr
+				idat={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
+				spec=[spec,instr[i]]
+				data=create_struct(data,'d'+num2str(n(spec),1),idat)
+			ENDIF
+        	ENDFOR
+		data=create_struct(data,'spec',spec)
+	ENDIF
 
-	;load spectroscopy data if needed
-	IF need_xeus AND NOT keyword_set(xeus) THEN BEGIN
-		vuv_load_spec,shot,specbr,lam,time,/xeus,sigbr=sigbr
-		xeus={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
-        ENDIF
-	IF need_loweus AND NOT keyword_set(loweus) THEN BEGIN
-		vuv_load_spec,shot,specbr,lam,time,/loweus,sigbr=sigbr
-		loweus={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
-        ENDIF
 	br={elem:ispec.elem,z:ispec.z,nlines:ispec.nlines}
 	coefs={elem:ispec.elem,z:ispec.z,nlines:ispec.nlines}
 	IF NOT keyword_set(kline) THEN BEGIN
@@ -1081,40 +1112,21 @@ PRO impspec,shot,ispec,br,coefs,xeus=xeus,loweus=loweus,plot=plot,debug=debug,kl
 	ENDELSE
 	FOR i=start,stop DO BEGIN
 		j=nlines-1-i
-		CASE instr[i] OF 	
-			'xeus' : BEGIN
-				jcoefs=fltarr(3*ispec.(j).ilines+2,xeus.nt,2)
-				jbr=fltarr(xeus.nt,3)
-				jstatus=intarr(xeus.nt)
-				FOR k=0,xeus.nt-1 DO BEGIN
-					kcoefs=impspec_fit_line(xeus.specbr[*,k],xeus.lam,xeus.sig[*,k],ispec.(j),plot=plot,status=status,error=kerror,fitz=fitz)
-					IF status EQ 6 OR status EQ 7 THEN BEGIN
-						jcoefs[*,k,0]=kcoefs
-						jcoefs[*,k,1]=kerror
-						jbr[k,0]=sqrt(2*!pi)*kcoefs[0]*kcoefs[2]
-						jbr[k,2]=jbr[k,0]*sqrt((kerror[0]/kcoefs[0])^2+(kerror[2]/kcoefs[2])^2)
-					ENDIF
-					jstatus[k]=status
-				ENDFOR
-				jbr[*,1]=xeus.time
-			END
-			'loweus' : BEGIN
-				jcoefs=fltarr(3*ispec.(j).ilines+2,loweus.nt,2)
-				jbr=fltarr(loweus.nt,3)
-				jstatus=intarr(loweus.nt)
-				FOR k=0,loweus.nt-1 DO BEGIN
-					kcoefs=impspec_fit_line(loweus.specbr[*,k],loweus.lam,loweus.sig[*,k],ispec.(j),plot=plot,status=status,error=kerror,fitz=fitz)
-					IF status EQ 6 OR status EQ 7 THEN BEGIN
-						jcoefs[*,k,0]=kcoefs
-						jcoefs[*,k,1]=kerror
-						jbr[k,0]=sqrt(2*!pi)*kcoefs[0]*kcoefs[2]
-						jbr[k,2]=jbr[k,0]*sqrt((kerror[0]/kcoefs[0])^2+(kerror[2]/kcoefs[2])^2)
-					ENDIF
-					jstatus[k]=status
-                                ENDFOR
-				jbr[*,1]=loweus.time
-                            END
-                ENDCASE
+		index=where(data.spec EQ instr[i])
+		jcoefs=fltarr(3*ispec.(j).ilines+2,data.(index).nt,2)
+		jbr=fltarr(data.(index).nt,3)
+		jstatus=intarr(data.(index).nt)
+		FOR k=0,data.(index).nt-1 DO BEGIN
+			kcoefs=impspec_fit_line(data.(index).specbr[*,k],(data.(index).lam,data.(index).sig[*,k],ispec.(j),plot=plot,status=status,error=kerror,fitz=fitz)
+			IF status EQ 6 OR status EQ 7 THEN BEGIN
+				jcoefs[*,k,0]=kcoefs
+				jcoefs[*,k,1]=kerror
+				jbr[k,0]=sqrt(2*!pi)*kcoefs[0]*kcoefs[2]
+				jbr[k,2]=jbr[k,0]*sqrt((kerror[0]/kcoefs[0])^2+(kerror[2]/kcoefs[2])^2)
+			ENDIF
+			jstatus[k]=status
+		ENDFOR
+		jbr[*,1]=data.(index).time
 		addstr="'line"+num2str(j,1)+"',jcoefs"
 		result=execute("coefs=create_struct("+addstr+",coefs)")	
 		addstr="'line"+num2str(j,1)+"',jbr"
