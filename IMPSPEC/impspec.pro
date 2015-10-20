@@ -31,16 +31,16 @@
 
 FUNCTION read_ispec_path,z
 	gpath=getenv('GENIE_PATH')
-	IF gpath EQ '' THEN gpath='/usr/local/cmod/idl/'	;default to C-Mod path
+	IF gpath EQ '' THEN gpath='/usr/local/cmod/idl/GENIE/'	;default to C-Mod path
 	CASE z OF 
-		5  : spath='GENIE/IMPSPEC/ispec/B.ispec'
-		7  : spath='GENIE/IMPSPEC/ispec/N.ispec'
-		8  : spath='GENIE/IMPSPEC/ispec/O.ispec'
-		9  : spath='GENIE/IMPSPEC/ispec/F.ispec'
-		10 : spath='GENIE/IMPSPEC/ispec/Ne.ispec'
-		18 : spath='GENIE/IMPSPEC/ispec/Ar.ispec'
-		42 : spath='GENIE/IMPSPEC/ispec/Mo.ispec'
-		74 : spath='GENIE/IMPSPEC/ispec/W.ispec'
+		5  : spath='IMPSPEC/ispec/B.ispec'
+		7  : spath='IMPSPEC/ispec/N.ispec'
+		8  : spath='IMPSPEC/ispec/O.ispec'
+		9  : spath='IMPSPEC/ispec/F.ispec'
+		10 : spath='IMPSPEC/ispec/Ne.ispec'
+		18 : spath='IMPSPEC/ispec/Ar.ispec'
+		42 : spath='IMPSPEC/ispec/Mo.ispec'
+		74 : spath='IMPSPEC/ispec/W.ispec'
 		ELSE : spath='none'
 	ENDCASE
 	path=gpath+spath
