@@ -165,54 +165,48 @@ PRO w_impspec_plotspec,u
 	icoefs=*u.dat.coefs[i]
 	ibr=*u.dat.br[i]
 	ispec=*u.dat.ispec[u.stat.zindex]
-	if size(ispec,/type) eq 8 then begin
-	 spec=ispec.(j).spec
-	 coefs=icoefs.(j)[*,ipt(ibr.(j)[*,1],u.stat.time),0]
-
-	 CASE spec OF
-		'xeus' : BEGIN
-			k=ipt(u.stat.time,u.dat.xeus.time)
-			tmp=where(u.dat.xeus.lam GE ispec.(j).dlam[0] AND u.dat.xeus.lam LE ispec.(j).dlam[1])
-			x=u.dat.xeus.lam[tmp]
-			y=u.dat.xeus.specbr[tmp,k]
-			yerr=u.dat.xeus.sig[tmp,k]
-                END
-		'loweus' : BEGIN
-			k=ipt(u.stat.time,u.dat.loweus.time)
-			tmp=where(u.dat.loweus.lam GE ispec.(j).dlam[0] AND u.dat.loweus.lam LE ispec.(j).dlam[1])
-			x=u.dat.loweus.lam[tmp]
-			y=u.dat.loweus.specbr[tmp,k]
-			yerr=u.dat.loweus.sig[tmp,k]
-                END
-         ENDCASE
-	 yfit=gaussian_fits(x,coefs)
-	 xr=[min(x), max(x)]
-	 yr=[min(y-yerr) < 0,max(y+yerr)*1.05]
-	 xplot=make(x[0],last(x),u.plot.nx)
-	 plot,[0],[0],xr=xr,yr=yr,/xsty,/ysty,ytit='Spec. Bright.',xtit='Wavelength [Ang]',chars=1.0*ls,pos=[0.1,0.4,0.98,0.98]
-	 oploterror,x,y,yerr,psym=8,color=col[0]
-	 oplot,xr,[0,0],linestyle=1
-	 oplot,xplot,gaussian_fits(xplot,coefs),color=col[2]
-	 ilines=(n(coefs)-1)/3
-	 FOR i=0,ilines-1 DO BEGIN
-		IF i EQ u.stat.jindex THEN color=col[3] ELSE color=col[1]
-		oplot,xplot,gaussian_fits(xplot,coefs[3*i:3*(i+1)-1]),color=color,linestyle=2.0
-	 ENDFOR
-	 oplot,xplot,coefs[3*ilines]*(xplot-xplot[0])+last(coefs),color=col[1],linestyle=3.0
-
-	 yr=max(abs(yfit-y)+yerr)
-	 plot,[0],[0],xr=xr,yr=[-yr,yr],/xsty,/ysty,ytit='Spec. Bright.',xtit='Wavelength [Ang]',chars=1.0*ls,pos=[0.1,0.08,0.98,0.32],/noerase
-	 oploterror,x,y-yfit,yerr,psym=8
-	 oplot,xr,[0,0],linestyle=1
+	IF size(ispec,/type) EQ 8 THEN BEGIN
+		spec=ispec.(j).spec
+	 	coefs=icoefs.(j)[*,ipt(ibr.(j)[*,1],u.stat.time),0]
+		index=where(u.dat.spec EQ spec)
+		data=*u.dat.data[index[0]]
+		k=ipt(u.stat.time,data.time)
+		tmp=where(data.lam GE ispec.(j).dlam[0] AND data.lam LE ispec.(j).dlam[1])
+		x=data.lam[tmp]
+		y=data.specbr[tmp,k]
+		yerr=data.sig[tmp,k]
+      
+		yfit=gaussian_fits(x,coefs)
+	 	xr=[min(x), max(x)]
+		yr=[min(y-yerr) < 0,max(y+yerr)*1.05]
+		xplot=make(x[0],last(x),u.plot.nx)
+		plot,[0],[0],xr=xr,yr=yr,/xsty,/ysty,ytit='Spec. Bright.',xtit='Wavelength [Ang]',chars=1.0*ls,pos=[0.1,0.4,0.98,0.98]
+		oploterror,x,y,yerr,psym=8,color=col[0]
+		oplot,xr,[0,0],linestyle=1
+		oplot,xplot,gaussian_fits(xplot,coefs),color=col[2]
+		ilines=(n(coefs)-1)/3
+		FOR i=0,ilines-1 DO BEGIN
+			IF i EQ u.stat.jindex THEN color=col[3] ELSE color=col[1]
+			oplot,xplot,gaussian_fits(xplot,coefs[3*i:3*(i+1)-1]),color=color,linestyle=2.0
+		ENDFOR
+		oplot,xplot,coefs[3*ilines]*(xplot-xplot[0])+last(coefs),color=col[1],linestyle=3.0
 	
-	 IF NOT u.stat.ps THEN BEGIN
-		wset,draw_win
-		device,copy=[0,0,u.plot.asize[0],u.plot.asize[1],0,0,0]
-	 ENDIF ELSE device, xsize=float(d_old.x_size)/d_old.x_px_cm,ysize=float(d_old.y_size)/d_old.y_px_cm
-	endif
+		yr=max(abs(yfit-y)+yerr)
+		plot,[0],[0],xr=xr,yr=[-yr,yr],/xsty,/ysty,ytit='Spec. Bright.',xtit='Wavelength [Ang]',chars=1.0*ls,pos=[0.1,0.08,0.98,0.32],/noerase
+		oploterror,x,y-yfit,yerr,psym=8
+		oplot,xr,[0,0],linestyle=1
+	
+	 	IF NOT u.stat.ps THEN BEGIN
+			wset,draw_win
+			device,copy=[0,0,u.plot.asize[0],u.plot.asize[1],0,0,0]
+		ENDIF ELSE device, xsize=float(d_old.x_size)/d_old.x_px_cm,ysize=float(d_old.y_size)/d_old.y_px_cm
+	ENDIF
 END
 
 PRO w_impspec_load,u
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
+
 	WIDGET_CONTROL,/hourglass
 	IF u.stat.dat THEN BEGIN
 		heap_free,u.dat.ispec
@@ -228,11 +222,11 @@ PRO w_impspec_load,u
 	br=ptrarr(nz,/allocate_heap)
 	coefs=ptrarr(nz,/allocate_heap)
 
-	mdsopen,'spectroscopy',shot
+	mdsopen,tree,shot
 	widget_control,u.id.message,set_value='LOADING SHOT '+num2str(shot,1),/append
 	FOR i=0,nz-1 DO BEGIN
 		zstr=read_atomic_name(zlist[i])
-		nlines=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr[0])+':NLINES',/quiet,status=status)
+		nlines=mdsvalue(node+'.'+strupcase(zstr[0])+':NLINES',/quiet,status=status)
 		IF status THEN BEGIN
 			zchk[i]=nlines
 			widget_control,u.id.message,set_value='LOADING '+num2str(nlines,1)+' LINES FOR Z='+num2str(zlist[i],1) ,/append
@@ -240,7 +234,7 @@ PRO w_impspec_load,u
 			xcoefs={elem:zstr,z:zlist[i],nlines:nlines}
 			FOR k=0,nlines-1 DO BEGIN
 				j=nlines-1-k
-				path='\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr[0])+'.LINE'+num2str(j,1)
+				path=node+'.'+strupcase(zstr[0])+'.LINE'+num2str(j,1)
 				jbr=mdsvalue('_sig='+path+':BR',/quiet)
 				jtime=mdsvalue('dim_of(_sig,0)',/quiet)
 				jbsig=mdsvalue('dim_of(_sig,1)',/quiet)
@@ -261,17 +255,29 @@ PRO w_impspec_load,u
                 ENDELSE
 
         ENDFOR
-	mdsclose,'spectroscopy',shot
+	mdsclose,tree,shot
 	widget_control,u.id.message,set_value='SHOT '+num2str(shot,1)+' LOADED',/append
 	FOR i=0,nz-1 DO IF zchk[i] NE 0 THEN *ispec[i]=read_ispec_tree(shot,zlist[i])
-
-	vuv_load_spec,shot,specbr,lam,time,/xeus,sigbr=sigbr
-	xeus={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
-	vuv_load_spec,shot,specbr,lam,time,/loweus,sigbr=sigbr
-	loweus={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
+	instr=''	;create list spectrometers for all lines
+	FOR i=0,n(ispec) DO BEGIN
+		xspec=*ispec[i]
+		FOR j=0,xspec.nlines-1 DO instr=[instr,xspec.(j).spec]
+	ENDFOR
+	instr=instr[1:*]
+	spec=instr[0]	;create list of unique spectrometers
+	FOR i=0,n(instr) DO BEGIN
+		tmp=where(spec EQ instr[i])
+		IF tmp[0] EQ -1 THEN spec=[spec,instr[i]]
+        ENDFOR
+	data=ptrarr(n(spec)+1,/allocate_heap)	;load each spectrometer data structure into a pointer
+	FOR i=0,n(spec) DO BEGIN
+		vuv_load_spec,shot,spec[i],specbr,lam,time,sigbr=sigbr
+		idat={specbr:specbr,sig:sigbr,lam:lam,time:time,nt:n(time)+1}
+		*data[i]=idat
+        ENDFOR
 
 	u.stat.dat=1 
-	dat={loweus:loweus,xeus:xeus,zchk:zchk,ispec:ispec,br:br,coefs:coefs}
+	dat={data:data,spec:spec,zchk:zchk,ispec:ispec,br:br,coefs:coefs}
 	u={id:u.id,shot:u.shot,stat:u.stat,plot:u.plot,z:u.z,dat:dat}
 	widget_control,u.id.base, set_uvalue=u	
 
@@ -350,6 +356,7 @@ PRO w_impspec_event,event
 						heap_free,u.dat.ispec
 						heap_free,u.dat.br
 						heap_free,u.dat.coefs
+						heap_free,u.dat.spec
 					ENDIF
 					widget_control,event.top,/destroy
 					!except=1
@@ -590,10 +597,21 @@ END
 ;
 ;-
 
-PRO w_impspec,shot=shot,time=time
-	IF NOT keyword_set(shot) THEN shot=1120210003
-	IF NOT keyword_set(time) THEN time=1.0
-	zlist=[5,7,8,9,10,18,42,74]
+PRO w_impspec,shot=shot,time=time,zlist=zlist
+	get_genie_env,MACHINE=mach
+	CASE mach OF 
+		'cmod' : BEGIN
+			IF NOT keyword_set(shot) THEN shot=1120210003
+			IF NOT keyword_set(time) THEN time=1.0
+			IF NOT keyword_set(zlist) THEN zlist=[5,7,8,9,10,18,42,74]
+		END
+		'nstxu' : BEGIN
+			IF NOT keyword_set(shot) THEN shot=141229
+			IF NOT keyword_set(time) THEN time=0.3
+			IF NOT keyword_set(zlist) THEN zlist=[7,8]
+		END
+	ENDCASE
+
 
 	loadct,12,/silent
 	base=widget_base(title='IMPSPEC ANALYSIS',/row,tlb_size_events=1)
@@ -649,7 +667,7 @@ PRO w_impspec,shot=shot,time=time
 
 	B3=widget_base(B,/row)
 	t_text=widget_text(B3,xsize=8,ysize=1,/edit)
-	t_slider=widget_slider(B3,xsize=xsz-120,min=0,max=2000,value=1000,/drag,/suppress)
+	t_slider=widget_slider(B3,xsize=xsz-120,min=0,max=2000,value=time*1.0e3,/drag,/suppress)
 
 
 	A1p1=widget_base(A1,/row)
@@ -717,10 +735,6 @@ PRO w_impspec,shot=shot,time=time
 	widget_control,u.id.by1,set_value=num2str(u.plot.byr[1],dp=3)
 	widget_control,u.id.byauto,set_button=u.plot.bya
 	widget_control,u.id.bxauto,set_button=u.plot.bxa
-
-
-
-	
 
 	!except=0
 	widget_control,base,/realize
