@@ -319,11 +319,11 @@ END
 ;
 ;KEYWORD PARAMETERS:
 ;	force	/force will delete a given element subnode before writing
-;	rm	/rm will delete the \SPECTROSCOPY::TOP.IMPSPEC node 
+;	rm	/rm will delete the IMPSPEC node 
 ;
 ;PROCEDURE:
 ;	The default behavior is to simply add the 
-;	\SPECTROSCOPY::TOP.IMPSPEC node if it is not already there for a
+;	IMPSPEC node (based on IMPSPEC_MDS_PATH) if it is not already there for a
 ;	given shot.  If the z optional input is specified then both
 ;	WRITE_ISPEC2NODE and WRITE_ISPEC2TREE are run for that shot
 ;
@@ -342,7 +342,7 @@ PRO add_impspec,shot,z=z,force=force,rm=rm
 	mdsclose,tree,shot
 	IF status AND keyword_set(rm) THEN BEGIN						;removes the IMPSPEC directory
 		mdstcl, "set verify"
-		mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
+		mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
 		mdstcl, 'DELETE NODE '+node
 		mdstcl, 'write'
 		mdstcl, 'close' 	
@@ -365,7 +365,7 @@ PRO add_impspec,shot,z=z,force=force,rm=rm
 			IF is_ispec(shot,z[i]) THEN BEGIN
 				IF keyword_set(force) THEN BEGIN
 					mdstcl, "set verify"
-					mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
+					mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
 					mdstcl, 'DELETE NODE '+node+'.'+strupcase(zstr)
 					mdstcl, 'write'
 					mdstcl, 'close' 	
@@ -420,7 +420,7 @@ END
 ;
 ;PURPOSE:
 ;	This procedure takes an ISPEC file and creates a subnode under
-;	\SPECTROSCOPY::TOP.IMPSPEC for that element, allowing
+;	.IMPSPEC for that element, allowing
 ;	RUN_IMPSPEC to be used on that shot.
 ;
 ;CALLING SEQUENCE:
@@ -440,7 +440,7 @@ END
 ;
 ;OUTPUTS:
 ;	Nodes are added to the tree based on the data in the ISPEC
-;	file.  A subnode \SPECTROSCOPY::TOP.IMPSPEC.LINE# is added for each
+;	file.  A subnode .IMPSPEC.LINE# is added for each
 ;	line specified where the brightness, coefficients and information for
 ;	the IMPSPEC scope are located.
 ;
@@ -907,7 +907,7 @@ PRO vuv_load_spec,shot,spec,specbr,lam,time,sigbr=sigbr
 				'loweus' : path='\PSPEC_PC::TOP.LOWEUS:IMAGE'
 			ENDCASE
 			mdsopen,'pspec_pc',shot
-			ispecbr=float(mdsvalue('_sig='+path+':IMAGE',/quiet,status=status))
+			ispecbr=float(mdsvalue('_sig='+path,/quiet,status=status))
 			lam=mdsvalue('dim_of(_sig,0)',/quiet)
 			time=float(mdsvalue('dim_of(_sig,2)',/quiet))/1.0e3
 			mdsclose,'pspec_pc',shot
@@ -1153,7 +1153,7 @@ END
 ;	fitz	INTARR	of the other impurities to include in the fit (sent to IMPSPEC)
 ;
 ;OUTPUTS:
-;	all data output is stored into the \SPECTROSCOPY::TOP.IMPSPEC tree
+;	all data output is stored into the IMPSPEC tree
 ;
 ;PROCEDURE:
 ;	The ISPEC file is loaded from the tree using READ_ISPEC_TREE

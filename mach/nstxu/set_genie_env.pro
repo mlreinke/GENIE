@@ -10,7 +10,7 @@ PRO set_genie_env
 	IF GENIE_PATH EQ '' THEN setenv, 'GENIE_PATH=/u/mreinke/GENIE/'
 
 	ATOMIC_PHYSICS_PATH=getenv('ATOMIC_PHYSICS_PATH')
-		IF ATOMIC_PHYSICS_PATH EQ '' THEN setenv, 'ATOMIC_PHYSICS_PATH=/p/nstxusr/nstxusers/mreinke/atomic_physics/'
+		IF ATOMIC_PHYSICS_PATH EQ '' THEN setenv, 'ATOMIC_PHYSICS_PATH=/p/nstxusr/nstx-users/mreinke/atomic_physics/'
 
 	IMPSPEC_MDS_PATH=getenv('IMPSPEC_MDS_PATH')
 	IF IMPSPEC_MDS_PATH EQ '' THEN $
