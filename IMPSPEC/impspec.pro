@@ -1117,7 +1117,7 @@ PRO impspec,shot,ispec,br,coefs,data=data,plot=plot,debug=debug,kline=kline,fitz
 		jbr=fltarr(data.(index).nt,3)
 		jstatus=intarr(data.(index).nt)
 		FOR k=0,data.(index).nt-1 DO BEGIN
-			kcoefs=impspec_fit_line(data.(index).specbr[*,k],(data.(index).lam,data.(index).sig[*,k],ispec.(j),plot=plot,status=status,error=kerror,fitz=fitz)
+			kcoefs=impspec_fit_line(data.(index).specbr[*,k],data.(index).lam,data.(index).sig[*,k],ispec.(j),plot=plot,status=status,error=kerror,fitz=fitz)
 			IF status EQ 6 OR status EQ 7 THEN BEGIN
 				jcoefs[*,k,0]=kcoefs
 				jcoefs[*,k,1]=kerror
