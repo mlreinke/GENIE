@@ -178,12 +178,13 @@ PRO w_impspec_plotspec,u
       
 		yfit=gaussian_fits(x,coefs)
 	 	xr=[min(x), max(x)]
-		yr=[min(y-yerr) < 0,max(y+yerr)*1.05]
 		xplot=make(x[0],last(x),u.plot.nx)
+		gfit=gaussian_fits(xplot,coefs)
+		yr=[min(y-yerr) < 0,(max(y+yerr) > max(gfit))*1.05]
 		plot,[0],[0],xr=xr,yr=yr,/xsty,/ysty,ytit='Spec. Bright.',xtit='Wavelength [Ang]',chars=1.0*ls,pos=[0.1,0.4,0.98,0.98]
 		oploterror,x,y,yerr,psym=8,color=col[0]
 		oplot,xr,[0,0],linestyle=1
-		oplot,xplot,gaussian_fits(xplot,coefs),color=col[2]
+		oplot,xplot,gfit,color=col[2]
 		ilines=(n(coefs)-1)/3
 		FOR i=0,ilines-1 DO BEGIN
 			IF i EQ u.stat.jindex THEN BEGIN

@@ -914,7 +914,7 @@ PRO vuv_load_spec,shot,spec,specbr,lam,time,sigbr=sigbr
 			x=size(ispecbr)
 			specbr=fltarr(x[1],x[3])
 			FOR i=0,x[1]-1 DO FOR j=0,x[3]-1 DO specbr[i,j]=median(ispecbr[i,*,j])
-			sigbr=specbr*0.0	;hardcode for now
+			sigbr=specbr*0.05	;hardcode for now
                 END
 
 	ENDCASE
