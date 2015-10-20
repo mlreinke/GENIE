@@ -1210,10 +1210,13 @@ END
 PRO w_spec,shot=shot,time=time, block=block
 	; load machine configuration
 	get_genie_env,MACHINE=mach
+	CASE mach OF 
+		'cmod' : stdef=1150625023
+		'nstxu' : stdef=141229
+	ENDCASE
 	st=execute('load_'+mach+',mach')
 	
 	user=logname()
-	stdef=1150625023
 	IF NOT keyword_set(shot) THEN st=execute('shot=load_'+mach.name+'_shot()')
 	IF NOT keyword_set(time) THEN time=1.0
 	IF shot EQ -1 THEN shot=stdef

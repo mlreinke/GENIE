@@ -25,21 +25,25 @@
 ;	Written by:	M.L. Reinke - 3/2012
 ;	6/8/12		M.L. Reinke - modified the ispec paths to usr /usr/local/cmod/idl/GENIE/IMPSPEC/ispec/
 ;	7/24/14		M.L. Reinke - added path for W.ispec
+;	10/19/15	M.L. Reinke - modified to read ispec files from GENIE_PATH
 ;
 ;-
 
 FUNCTION read_ispec_path,z
+	gpath=getenv('GENIE_PATH')
+	IF gpath EQ '' THEN gpath='/usr/local/cmod/idl/'	;default to C-Mod path
 	CASE z OF 
-		5  : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/B.ispec'
-		7  : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/N.ispec'
-		8  : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/O.ispec'
-		9  : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/F.ispec'
-		10 : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/Ne.ispec'
-		18 : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/Ar.ispec'
-		42 : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/Mo.ispec'
-		74 : path='/usr/local/cmod/idl/GENIE/IMPSPEC/ispec/W.ispec'
-		ELSE : path='none'
+		5  : spath='GENIE/IMPSPEC/ispec/B.ispec'
+		7  : spath='GENIE/IMPSPEC/ispec/N.ispec'
+		8  : spath='GENIE/IMPSPEC/ispec/O.ispec'
+		9  : spath='GENIE/IMPSPEC/ispec/F.ispec'
+		10 : spath='GENIE/IMPSPEC/ispec/Ne.ispec'
+		18 : spath='GENIE/IMPSPEC/ispec/Ar.ispec'
+		42 : spath='GENIE/IMPSPEC/ispec/Mo.ispec'
+		74 : spath='GENIE/IMPSPEC/ispec/W.ispec'
+		ELSE : spath='none'
 	ENDCASE
+	path=gpath+spath
 	RETURN,path
 END
 
@@ -220,16 +224,19 @@ END
 ;
 ;MODIFICATION HISTORY:
 ;	Written by:	M.L. Reinke - 3/12
-;	N.L. Reinke 	5/22/12 - added a Z suffix to the tmp.ispec file so parallel z's can be run
+;	M.L. Reinke 	5/22/12 - added a Z suffix to the tmp.ispec file so parallel z's can be run
+;	M.L. Reinke	10/20/15 - modified to use environment variables for tree/nodes
 ;-
 
 FUNCTION read_ispec_tree,shot,z
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
 
 	;read ISPEC string from tree
 	zstr=read_atomic_name(z)
-	mdsopen,'spectroscopy',shot
-	istr=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr[0])+':ISPEC',/quiet,status=status)
-	mdsclose,'spectroscopy',shot
+	mdsopen,tree,shot
+	istr=mdsvalue(node+'.'+strupcase(zstr[0])+':ISPEC',/quiet,status=status)
+	mdsclose,tree,shot
 	IF NOT status THEN RETURN,-1
 
 	ispec=read_ispec_file(istr,/str)
@@ -259,31 +266,37 @@ END
 ;CALLING SEQUENCE:
 ;	result=IS_SPEC(shot,z)
 ;	
+;MODIFICATION HISTORY:
+;	M.L. Reinke	10/20/15 - modified to use environment variables for tree/nodes
 ;-
 
 FUNCTION is_ispec,shot,z
-	mdsopen,'spectroscopy',shot
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
+	mdsopen,tree,shot
 	nchk=n(z)+1
 	chk=intarr(nchk)
 	FOR i=0,nchk-1 DO BEGIN
 		zstr=read_atomic_name(z[i])
-		dummy=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr[0])+':ISPEC',/quiet,status=status)
+		dummy=mdsvalue(node+'.'+strupcase(zstr[0])+':ISPEC',/quiet,status=status)
 		IF status THEN chk[i]=1
         ENDFOR
-	mdsclose,'spectroscopy',shot
+	mdsclose,tree,shot
 	RETURN,chk
 
 END
 
 PRO copy_ispec,tshot,fshot,z=z
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
 	FOR i=0,n(z) DO BEGIN
 		zstr=read_atomic_name(z[i])
-		mdsopen,'spectroscopy',fshot
-		istr=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr[0])+':ISPEC')
-		mdsclose,'spectroscopy',fshot
-		mdsopen,'spectroscopy',tshot
-		mdsput,'\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr[0])+':ISPEC','$',istr
-		mdsclose,'spectroscopy',tshot	
+		mdsopen,tree,fshot
+		istr=mdsvalue(node+'.'+strupcase(zstr[0])+':ISPEC')
+		mdsclose,tree,fshot
+		mdsopen,tree,tshot
+		mdsput,node+'.'+strupcase(zstr[0])+':ISPEC','$',istr
+		mdsclose,tree,tshot	
 	ENDFOR
 END
 
@@ -317,32 +330,35 @@ END
 ;MODIFICATION HISTORY:
 ;	Written by:	M.L. Reinke - 3/12
 ;	7/3/12		M.L. Reinke - added the PROF structure and nodes for use with GENTRAN_WRITE2TREE
+;	10/20/15	M.L. Reinke - modified to use environment variables for tree/nodes
 ;
 ;-
 
 PRO add_impspec,shot,z=z,force=force,rm=rm
-	mdsopen,'spectroscopy',shot
-	dummy=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.AR:ISPEC',/quiet,status=status)
-	mdsclose,'spectroscopy',shot
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
+	mdsopen,tree,shot
+	dummy=mdsvalue(node+'.C:ISPEC',/quiet,status=status)
+	mdsclose,tree,shot
 	IF status AND keyword_set(rm) THEN BEGIN						;removes the IMPSPEC directory
 		mdstcl, "set verify"
 		mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-		mdstcl, 'DELETE NODE \SPECTROSCOPY::TOP.IMPSPEC'
+		mdstcl, 'DELETE NODE '+node
 		mdstcl, 'write'
 		mdstcl, 'close' 	
 	ENDIF
 	IF NOT status THEN BEGIN
 		mdstcl, "set verify"
-		mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-		mdstcl, 'ADD NODE \SPECTROSCOPY::TOP.IMPSPEC'
-		mdstcl, 'ADD NODE \SPECTROSCOPY::TOP.IMPSPEC.PROF'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.PROF:DENS'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.PROF:TEMP'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.PROF:NEUT'
-		mdstcl, 'ADD NODE/USAGE=TEXT \SPECTROSCOPY::TOP.IMPSPEC.PROF:VERSION'
+		mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+		mdstcl, 'ADD NODE '+node
+		mdstcl, 'ADD NODE '+node+'.PROF'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.PROF:DENS'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.PROF:TEMP'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.PROF:NEUT'
+		mdstcl, 'ADD NODE/USAGE=TEXT '+node+'.PROF:VERSION'
 		mdstcl, 'write'
 		mdstcl, 'close' 
-        ENDIF ELSE print, '\SPECTROSCOPY::TOP.IMPSPEC already exists, use /rm to delete'
+        ENDIF ELSE print, node+' already exists, use /rm to delete'
 	IF keyword_set(z) AND NOT keyword_set(rm) THEN BEGIN
 		FOR i=0,n(z) DO BEGIN
 			zstr=read_atomic_name(z[i])
@@ -350,10 +366,10 @@ PRO add_impspec,shot,z=z,force=force,rm=rm
 				IF keyword_set(force) THEN BEGIN
 					mdstcl, "set verify"
 					mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-					mdstcl, 'DELETE NODE \SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr)
+					mdstcl, 'DELETE NODE '+node+'.'+strupcase(zstr)
 					mdstcl, 'write'
 					mdstcl, 'close' 	
-                                ENDIF ELSE print, '\SPECTROSCOPY::TOP.IMPSPEC.'+strupcase(zstr)+' already exists, use /force to overwrite'
+                                ENDIF ELSE print, node+'.'+strupcase(zstr)+' already exists, use /force to overwrite'
                         ENDIF ELSE write_ispec2node,shot,path,z=z[i]
 			write_ispec2tree,shot,path,z=z[i]
                 ENDFOR
@@ -372,28 +388,30 @@ END
 ;-
 
 PRO append_impspec_modeling,shot,rm=rm
-	mdsopen,'spectroscopy',shot
-	dummy=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.PROF.VERSION',/quiet,status=status)
-	mdsclose,'spectroscopy',shot
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
+	mdsopen,tree,shot
+	dummy=mdsvalue(node+'.PROF.VERSION',/quiet,status=status)
+	mdsclose,tree,shot
 
 	IF status AND keyword_set(rm) THEN BEGIN						;removes the IMPSPEC directory
 		mdstcl, "set verify"
-		mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-		mdstcl, 'DELETE NODE \SPECTROSCOPY::TOP.IMPSPEC.PROF'
+		mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+		mdstcl, 'DELETE NODE '+node+'.PROF'
 		mdstcl, 'write'
 		mdstcl, 'close' 	
 	ENDIF
 	IF NOT status THEN BEGIN
 		mdstcl, "set verify"
-		mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-		mdstcl, 'ADD NODE \SPECTROSCOPY::TOP.IMPSPEC.PROF'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.PROF:DENS'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.PROF:TEMP'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.PROF:NEUT'
-		mdstcl, 'ADD NODE/USAGE=TEXT \SPECTROSCOPY::TOP.IMPSPEC.PROF:VERSION'
+		mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+		mdstcl, 'ADD NODE '+node+'.PROF'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.PROF:DENS'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.PROF:TEMP'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.PROF:NEUT'
+		mdstcl, 'ADD NODE/USAGE=TEXT '+node+'.PROF:VERSION'
 		mdstcl, 'write'
 		mdstcl, 'close' 
-        ENDIF ELSE print, '\SPECTROSCOPY::TOP.IMPSPEC.PROF already exists, use /rm to delete'
+        ENDIF ELSE print, node+'.PROF already exists, use /rm to delete'
 END
 
 ;+
@@ -431,43 +449,46 @@ END
 ;	7/3/12		M.L. Reinke - added the DIFF/CONV/CSDEN to ELEM structure and BR_MOD, NZ 
 ;					and ETA to LINE# nodes for use with GENTRAN_WRITE2TREE
 ;	8/1/15		M.L. Reinke - added the rm and base keywords
-;                       
+;  	10/20/15	M.L. Reinke - modified to use environment variables for tree/nodes                     
+;
 ;-
 
 PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
 	IF size(path,/type) EQ 3 THEN ispec=read_ispec_tree(path,z) ELSE ispec=read_ispec_file(path,z=z)
-	mdsopen,'spectroscopy',shot
-	dummy=mdsvalue('\SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':ISPEC',/quiet,status=status)
-	mdsclose,'spectroscopy',shot
+	mdsopen,tree,shot
+	dummy=mdsvalue(node+'.'+ispec.elem+':ISPEC',/quiet,status=status)
+	mdsclose,tree,shot
 	IF status AND keyword_set(rm) OR keyword_set(force) THEN BEGIN						;removes the IMPSPEC directory
 		mdstcl, "set verify"
-		mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-		mdstcl, 'DELETE NODE \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+' /confirm'
+		mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+		mdstcl, 'DELETE NODE '+node+'.'+ispec.elem+' /confirm'
 		mdstcl, 'write'
 		mdstcl, 'close' 	
 	ENDIF
 	mdstcl, 'set verify'
-	mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-	mdstcl, 'ADD NODE \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem
-	mdstcl, 'ADD NODE/USAGE=NUMERIC \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':NLINES'
-	mdstcl, 'ADD NODE/USAGE=TEXT \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':ISPEC'
-	mdstcl, 'ADD NODE/USAGE=ACTION \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':RUN_ISPEC'
+	mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+	mdstcl, 'ADD NODE '+node+'.'+ispec.elem
+	mdstcl, 'ADD NODE/USAGE=NUMERIC '+node+'.'+ispec.elem+':NLINES'
+	mdstcl, 'ADD NODE/USAGE=TEXT '+node+'.'+ispec.elem+':ISPEC'
+	mdstcl, 'ADD NODE/USAGE=ACTION '+node+'.'+ispec.elem+':RUN_ISPEC'
 	IF NOT keyword_set(base) THEN BEGIN
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':DIFF'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':CONV'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':CSDEN'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+ispec.elem+':DIFF'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+ispec.elem+':CONV'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+ispec.elem+':CSDEN'
 	ENDIF
 	FOR i=0,ispec.nlines-1 DO BEGIN
 		lpath=ispec.elem+'.LINE'+num2str(i,1)
-		mdstcl, 'ADD NODE \SPECTROSCOPY::TOP.IMPSPEC.'+lpath
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':BR'
-		IF NOT keyword_set(base) THEN mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':BR_MOD'
-		IF NOT keyword_set(base) THEN mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':NZ'
-		IF NOT keyword_set(base) THEN mdstcl, 'ADD NODE/USAGE=NUMERIC \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':ETA'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':COEFS'
-		mdstcl, 'ADD NODE/USAGE=NUMERIC \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':LAM'
-		mdstcl, 'ADD NODE/USAGE=TEXT \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':LABEL'
-		mdstcl, 'ADD NODE/USAGE=NUMERIC \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':DLAM'
+		mdstcl, 'ADD NODE '+node+'.'+lpath
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+lpath+':BR'
+		IF NOT keyword_set(base) THEN mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+lpath+':BR_MOD'
+		IF NOT keyword_set(base) THEN mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+lpath+':NZ'
+		IF NOT keyword_set(base) THEN mdstcl, 'ADD NODE/USAGE=NUMERIC '+node+'.'+lpath+':ETA'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+lpath+':COEFS'
+		mdstcl, 'ADD NODE/USAGE=NUMERIC '+node+'.'+lpath+':LAM'
+		mdstcl, 'ADD NODE/USAGE=TEXT '+node+'.'+lpath+':LABEL'
+		mdstcl, 'ADD NODE/USAGE=NUMERIC '+node+'.'+lpath+':DLAM'
         ENDFOR	
 	mdstcl, 'write'
 	mdstcl, 'close' 
@@ -484,17 +505,19 @@ END
 ;-
 
 PRO append_ispec_modeling,shot,path,z=z
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
 	IF size(path,/type) EQ 3 THEN ispec=read_ispec_tree(path,z) ELSE ispec=read_ispec_file(path,z=z)
 	mdstcl, "set verify"
-	mdstcl, 'edit spectroscopy /shot='+num2str(shot,1)
-	mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':DIFF'
-	mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':CONV'
-	mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':CSDEN'
+	mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+	mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+ispec.elem+':DIFF'
+	mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+ispec.elem+':CONV'
+	mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+ispec.elem+':CSDEN'
 	FOR i=0,ispec.nlines-1 DO BEGIN
 		lpath=ispec.elem+'.LINE'+num2str(i,1)
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':BR_MOD'
-		mdstcl, 'ADD NODE/USAGE=SIGNAL \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':NZ'
-		mdstcl, 'ADD NODE/USAGE=NUMERIC \SPECTROSCOPY::TOP.IMPSPEC.'+lpath+':ETA'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+lpath+':BR_MOD'
+		mdstcl, 'ADD NODE/USAGE=SIGNAL '+node+'.'+lpath+':NZ'
+		mdstcl, 'ADD NODE/USAGE=NUMERIC '+node+'.'+lpath+':ETA'
         ENDFOR
 	mdstcl, 'write'
 	mdstcl, 'close' 
@@ -524,10 +547,13 @@ END
 ;	Written by	M.L. Reinke - 3/12
 ;       fixed path overwrite when passing a config file and no z ANJ 20120615
 ;	7/14/12 	M.L. Reinke - fixed bug where read_ispec_tree was using optional input of z instead of input
+;  	10/20/15	M.L. Reinke - modified to use environment variables for tree/nodes 
 ;
 ;-
 
 PRO write_ispec2tree,shot,path,z=z
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
 	;IF size(path,/type) EQ 3 THEN ispec=read_ispec_tree(path,z) ELSE ispec=read_ispec_file(path,z=z)
 	IF size(path,/type) NE 7 THEN BEGIN ; type 7 is a string
 	 ispec=read_ispec_tree(path,z) 
@@ -537,9 +563,9 @@ PRO write_ispec2tree,shot,path,z=z
 	 istr=ispec2string(path) ; don't pass z or path is overwritten...
 	ENDELSE
 
-	mdsopen,'spectroscopy',shot
-	mdsput,'\SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':ISPEC','$',istr
-	mdsclose,'spectroscopy',shot
+	mdsopen,tree,shot
+	mdsput,node+'.'+ispec.elem+':ISPEC','$',istr
+	mdsclose,tree,shot
 END
 
 ;+
@@ -1126,6 +1152,8 @@ END
 ;-
 
 PRO run_impspec,shot,z,fitz=fitz
+	tree=getenv('IMPSPEC_MDS_TREE')
+	node=getenv('IMPSPEC_MDS_PATH')
 	IF NOT keyword_set(fitz) THEN fitz=0
 
 	;load ISPEC configuration file
@@ -1134,10 +1162,10 @@ PRO run_impspec,shot,z,fitz=fitz
 	;run IMPSPEC
 	impspec,shot,ispec,br,coefs,fitz=fitz
 
-	mdsopen,'spectroscopy',shot
-	mdsput,'\SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+':NLINES','build_with_units($,"")',ispec.nlines
+	mdsopen,tree,shot
+	mdsput,node+'.'+ispec.elem+':NLINES','build_with_units($,"")',ispec.nlines
 	FOR i=0,ispec.nlines-1 DO BEGIN
-		path='\SPECTROSCOPY::TOP.IMPSPEC.'+ispec.elem+'.LINE'+num2str(i,1)
+		path=node+'.'+ispec.elem+'.LINE'+num2str(i,1)
 		mdsput,path+':BR','build_signal(build_with_units($1,"ph/s/m^2"),*,build_with_units($2,"seconds"),build_with_units($3,"ph/s/m^2"))',$
 			br.(i)[*,0],br.(i)[*,1],br.(i)[*,2]
 		mdsput,path+':COEFS','build_signal(build_with_units($1," "),*,build_with_units($2,"seconds"),build_with_units($3," "))',$
@@ -1147,5 +1175,5 @@ PRO run_impspec,shot,z,fitz=fitz
 		mdsput,path+':LABEL','build_with_units($," ")',ispec.(i).label
         ENDFOR
 
-	mdsclose,'spectroscopy',shot
+	mdsclose,tree,shot
 END

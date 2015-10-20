@@ -5,7 +5,9 @@
 ; hard-coded into w_spec and impspec, so that the codes are more easily 
 ; portable to other experiments.
 
-PRO load_nstx,machine 
+; taking the basic structure setup by ATC and making specific to nstxu (MLR 10/2015)
+
+PRO load_nstxu,machine 
 line_std={nam:['Mo XXXII','Ar XV','Ca XVII','Fe XXIII'], $ ; default lines to track
 	 lam0:[126.1,     220.4,  192.3,    132.4     ], $
 	 lam1:[129.2,     222.7,  193.6,    133.5     ], $
@@ -20,24 +22,24 @@ line_Mo ={nam:['Mo XXXII','Mo I','C III','Li I'], $ ; shot 139375, xp1041
 	 mult:[1.0,       10.0,   1.0,   1.0        ], $
 	 plot:[1,         1,      1,     1          ]}
 
-machine={name:'nstx', $
-	 inst:['short', 'loweus','xeus','dims','vips2'], $ ; spectroscopic instruments
-	 load:[1,       1,       1,     1,     1      ], $
-	 plot:[1,       1,       1,     1,     1      ], $
-	 nch: [1,       1,       1,     19,    10     ], $
+machine={name:'nstxu', $
+	 inst:['short', 'long','loweus','xeus','dims','vips2'], $ ; spectroscopic instruments
+	 load:[1,       1,	1,       1,     0,     0      ], $
+	 plot:[1,       1,	1,       1,     0,     0      ], $
+	 nch: [1,       1,	1,       1,     19,    10     ], $
 	 timetr:['totpwr','dalpha','dens','beams','hhfw'], $ ; time traces
-	 line:line_Mo,$
+	 line:line_std,$
 	 elem:'Li,C,Cu,Mo,W' $ ; default elements to overplot
 	}
 
 END
 
-function load_nstx_shot
+function load_nstxu_shot
 	; retrieve the current shot
 	return,mdscur_shot('nstx')
 end
 
-PRO load_nstx_spred,shot,d,short=short,verb=verb
+PRO load_nstxu_spred,shot,d,short=short,verb=verb
         mdsopen,'passivespec',shot
          t=mdsvalue('\PASSIVESPEC::TOP.SPRED.TIMES',/quiet,status=tstatus)
 
