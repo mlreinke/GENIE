@@ -435,8 +435,9 @@ END
 ;	z	INT	of the atomic number of interest (sent READ_ISPEC_PATH)		
 ;
 ;KEYWORD PARAMETERS:
-;	rm	/rm will remove the existing IMPSPEC.Z node and overwrite with specified file
+;	rm	/rm will remove the existing IMPSPEC.Z node and writea new node with specified file
 ;	base 	/base will write only the base IMPSPEC nodes, not those for GENTRAN modeling (as if that will ever occur?)
+;	tree	/tree will run WRITE_ISPEC2TREE,shot,path,z=z after the nodes are created to write the ispec file to the tree
 ;
 ;OUTPUTS:
 ;	Nodes are added to the tree based on the data in the ISPEC
@@ -450,10 +451,11 @@ END
 ;					and ETA to LINE# nodes for use with GENTRAN_WRITE2TREE
 ;	8/1/15		M.L. Reinke - added the rm and base keywords
 ;  	10/20/15	M.L. Reinke - modified to use environment variables for tree/nodes                     
+;	2/12/16		M.L. Reinke - added /tree to automate writing file with node creation
 ;
 ;-
 
-PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force
+PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force,tree=tree
 	tree=getenv('IMPSPEC_MDS_TREE')
 	node=getenv('IMPSPEC_MDS_PATH')
 	IF size(path,/type) EQ 3 THEN ispec=read_ispec_tree(path,z) ELSE ispec=read_ispec_file(path,z=z)
@@ -466,7 +468,10 @@ PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force
 		mdstcl, 'DELETE NODE '+node+'.'+ispec.elem+' /confirm'
 		mdstcl, 'write'
 		mdstcl, 'close' 	
-	ENDIF
+        ENDIF ELSE BEGIN
+		print, node+'.'+ispec.elem+' already exists, use /rm to delete'
+		RETURN	
+	ENDELSE
 	mdstcl, 'set verify'
 	mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
 	mdstcl, 'ADD NODE '+node+'.'+ispec.elem
@@ -491,7 +496,8 @@ PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force
 		mdstcl, 'ADD NODE/USAGE=NUMERIC '+node+'.'+lpath+':DLAM'
         ENDFOR	
 	mdstcl, 'write'
-	mdstcl, 'close' 
+	mdstcl, 'close'
+	IF keyword_set(tree) THEN write_ispec2tree,shot,path,z=z 
 END
 
 ;+

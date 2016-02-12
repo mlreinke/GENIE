@@ -689,9 +689,11 @@ PRO w_impspec,shot=shot,time=time,zlist=zlist
 			machtr=[0.01,1.65]
 		END
 		'nstxu' : BEGIN
+			xwplot
+			set_plot,'x'
 			IF NOT keyword_set(shot) THEN shot=141229
 			IF NOT keyword_set(time) THEN time=0.3
-			IF NOT keyword_set(zlist) THEN zlist=[7,8]
+			IF NOT keyword_set(zlist) THEN zlist=[5,7,8,10]
 			machtr=[0.01,1.0]
 		END
 	ENDCASE
