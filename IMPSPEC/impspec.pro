@@ -452,7 +452,7 @@ END
 ;	8/1/15		M.L. Reinke - added the rm and base keywords
 ;  	10/20/15	M.L. Reinke - modified to use environment variables for tree/nodes                     
 ;	2/12/16		M.L. Reinke - added /tree to automate writing file with node creation
-;
+;	4/25/16		M.L. Reinke - fixed bug in adding new nodes that confused the existence
 ;-
 
 PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force,tree=tree
@@ -462,16 +462,18 @@ PRO write_ispec2node,shot,path,z=z,rm=rm,base=base,force=force,tree=tree
 	mdsopen,tree,shot
 	dummy=mdsvalue(node+'.'+ispec.elem+':ISPEC',/quiet,status=status)
 	mdsclose,tree,shot
-	IF status AND keyword_set(rm) OR keyword_set(force) THEN BEGIN						;removes the IMPSPEC directory
-		mdstcl, "set verify"
-		mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
-		mdstcl, 'DELETE NODE '+node+'.'+ispec.elem+' /confirm'
-		mdstcl, 'write'
-		mdstcl, 'close' 	
-        ENDIF ELSE BEGIN
-		print, node+'.'+ispec.elem+' already exists, use /rm to delete'
-		RETURN	
-	ENDELSE
+	IF status THEN BEGIN
+		IF keyword_set(rm) OR keyword_set(force) THEN BEGIN						;removes the IMPSPEC directory
+			mdstcl, "set verify"
+			mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
+			mdstcl, 'DELETE NODE '+node+'.'+ispec.elem+' /confirm'
+			mdstcl, 'write'
+			mdstcl, 'close' 	
+		ENDIF ELSE BEGIN
+			print, node+'.'+ispec.elem+' already exists, use /rm to delete'
+			RETURN	
+                ENDELSE
+	ENDIF
 	mdstcl, 'set verify'
 	mdstcl, 'edit '+tree+' /shot='+num2str(shot,1)
 	mdstcl, 'ADD NODE '+node+'.'+ispec.elem
